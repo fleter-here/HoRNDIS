@@ -9,78 +9,113 @@ on:
 
 jobs:
   build:
-    name: Build on macOS with xcodebuild
+    name: Build HoRNDIS (requires legacy Xcode 7.3.1 + macOS 10.11 SDK)
     runs-on: macos-latest
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
 
-    - name: Check available Xcode tools
+    - name: Show Xcode and SDK info
       run: |
-        echo "=== Xcode Information ==="
+        echo "=== Xcode Version ==="
         xcodebuild -version
         echo ""
         echo "=== Available SDKs ==="
         xcodebuild -showsdks
         echo ""
-        echo "=== Xcode directory ==="
-        ls -la /Applications/Xcode.app/Contents/Developer/
+        echo "=== Project Target Info ==="
+        xcodebuild -project HoRNDIS.xcodeproj -list
 
-    - name: Try xcodebuild with macosx SDK
+    - name: Attempt build with modern SDK (will show deprecation warnings)
       run: |
-        echo "=== Attempting xcodebuild with macosx SDK ==="
-        echo "Building using xcodebuild command directly..."
-
-        # First, try to list the project targets
-        xcodebuild -project HoRNDIS.xcodeproj -list 2>&1 | head -50
-
+        echo "=== Attempting build with modern macOS SDK ==="
+        echo "Note: This is a legacy kext project using deprecated Kernel Programming Interfaces"
+        echo "Expected: Build will fail due to deprecated APIs removed from modern SDKs"
         echo ""
-        echo "=== Attempting direct build ==="
+
+        # Try building with flags to suppress some deprecation warnings
+        # Note: The typedef conflict error cannot be fixed without code changes
         xcodebuild -project HoRNDIS.xcodeproj \
                    -scheme HoRNDIS \
                    -sdk macosx \
                    -configuration Release \
+                   GCC_WARN_DEPRECATED_DECLARATIONS=NO \
+                   CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS=NO \
+                   MACOSX_DEPLOYMENT_TARGET=12.0 \
                    clean build 2>&1
 
-    - name: Check build results
+        BUILD_EXIT_CODE=${PIPESTATUS[0]}
+
+        if [ $BUILD_EXIT_CODE -eq 0 ]; then
+          echo "=== BUILD SUCCEEDED ==="
+        else
+          echo "=== BUILD FAILED (expected for legacy kext on modern macOS) ==="
+          echo "Exit code: $BUILD_EXIT_CODE"
+        fi
+        exit $BUILD_EXIT_CODE
+
+    - name: Check build artifacts
       if: always()
       run: |
-        echo "=== Checking build artifacts ==="
-        find build -type f -name "*.kext" -o -name "*.dylib" -o -name "*.tbd" 2>/dev/null | head -20 || echo "No kext/dylib/tbd files found"
+        echo "=== Build Artifacts ==="
+        find . -name "*.kext" -type d 2>/dev/null | head -10
         echo ""
-        echo "=== Checking project output ==="
-        ls -la build/ 2>/dev/null || echo "No build directory found"
+        find build -type f \( -name "*.kext" -o -name "*.dylib" -o -name "*.tbd" \) 2>/dev/null | head -20 || true
+        echo ""
+        ls -la build/ 2>/dev/null || echo "No build directory"
 
-    - name: Upload build artifacts
+    - name: Upload build artifacts (if any)
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: HoRNDIS-Build
-        path: build/
+        name: HoRNDIS-Build-Artifacts
+        path: |
+          build/Release/HoRNDIS.kext
+          build/HoRNDIS-*.pkg
         retention-days: 7
 
-    - name: Build Summary
+    - name: Summary
       run: |
-        cat << EOF > build-summary.md
-        # HoRNDIS Build Attempt
+        cat << 'EOF' > build-summary.md
+        # HoRNDIS Build Summary
 
-        **Build triggered:** \${{ github.event_name }}
-        **Branch:** \${{ github.ref_name }}
-        **Commit:** \${{ github.sha }}
+        **Build triggered:** ${{ github.event_name }}
+        **Branch:** ${{ github.ref_name }}
+        **Commit:** ${{ github.sha }}
         **Build date:** $(date)
 
-        ## Results
-        Build attempted using xcodebuild with macosx SDK
+        ## Project Requirements
+        - **Type**: Kernel Extension (kext) - DEPRECATED by Apple
+        - **Xcode required**: 7.3.1 (2016)
+        - **SDK required**: macOS 10.11 (El Capitan)
+        - **Target**: `com.apple.product-type.kernel-extension`
 
-        ## Project Details
-        - Type: Legacy kernel extension (kext)
-        - Target: HoRNDIS
-        - SDK: macosx
-        - Configuration: Release
+        ## Build Status on GitHub Actions
+        ❌ **FAILS** on modern macOS runners (macOS 26 + Xcode 26)
 
-        ## Notes
-        This is a legacy kext project that may require specific Xcode version and SDK settings.
+        ## Why It Fails
+        1. **Type conflict**: `IOPMDriverAssertionType` defined as `uint32_t` in `HoRNDIS-Prefix.pch:18` but SDK defines as `uint64_t`
+        2. **Deprecated KPIs**: All USB/Network KPIs marked deprecated since macOS 10.15.4
+        3. **Removed APIs**: Kernel extension KPIs removed from modern SDKs
 
-        For CI/CD, consider using a self-hosted runner with appropriate Xcode version.
+        ## To Actually Build This Project
+
+        ### Option 1: Self-Hosted Runner (Recommended)
+        - macOS 10.11 - 10.14 (El Capitan to Mojave)
+        - Xcode 7.3.1 - 10.x
+        - Configure as self-hosted GitHub Actions runner
+
+        ### Option 2: Migrate to DriverKit
+        - Apple's modern replacement for kexts
+        - Requires significant code rewrite
+        - Uses USBNetworking/NetworkExtension frameworks
+
+        ### Option 3: Local Build Only
+        - Build locally on legacy macOS
+        - Upload artifacts manually
+
+        ## Current Workflow Behavior
+        This workflow runs on every push/PR to show build status.
+        It will continue to fail until run on compatible infrastructure.
         EOF
