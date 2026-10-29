@@ -41,7 +41,7 @@ jobs:
                    -scheme HoRNDIS \
                    -sdk macosx \
                    -configuration Release \
-                   clean build 2>&1 | tail -100
+                   clean build 2>&1
 
     - name: Check build results
       if: always()
