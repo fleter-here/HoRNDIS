@@ -47,20 +47,11 @@ jobs:
         echo ""
         find build -type f \( -name "*.kext" -o -name "*.dylib" -o -name "*.tbd" \) 2>/dev/null | head -10
 
-    - name: Presenting HoRNDIS.kext
+    - name: Presenting kext
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: HoRNDIS.kext
+        name: HoRNDIS
         path: |
-          build/Release/HoRNDIS.kext
-        retention-days: 7
-
-    - name: Presenting HoRNDIS.kext.dSYM
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: HoRNDIS.kext.dSYM
-        path: |
-          build/Release/HoRNDIS.kext.dSYM
+          build/Release/*
         retention-days: 7
