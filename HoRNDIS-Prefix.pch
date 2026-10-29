@@ -2,3 +2,23 @@
 // Prefix header for all source files of the 'HoRNDIS' target in the 'HoRNDIS' project
 //
 
+// The macOS 27.0 SDK's <IOKit/pwr_mgt/RootDomain.h> references
+// IOPMDriverAssertionID, IOPMDriverAssertionType, and
+// IOPMDriverAssertionLevel without defining them (an incomplete SDK
+// header). Provide forward declarations so the header can be parsed
+// transitively via <IOKit/usb/IOUSBHostDevice.h>. These are guarded to
+// avoid clashing with any future definitions the SDK may provide.
+#include <stdint.h>
+
+#ifndef IOPMDriverAssertionID
+typedef uint64_t IOPMDriverAssertionID;
+#endif
+
+#ifndef IOPMDriverAssertionType
+typedef uint32_t IOPMDriverAssertionType;
+#endif
+
+#ifndef IOPMDriverAssertionLevel
+typedef uint32_t IOPMDriverAssertionLevel;
+#endif
+
