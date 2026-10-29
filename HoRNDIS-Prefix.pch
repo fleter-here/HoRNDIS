@@ -15,7 +15,7 @@ typedef uint64_t IOPMDriverAssertionID;
 #endif
 
 #ifndef IOPMDriverAssertionType
-typedef uint32_t IOPMDriverAssertionType;
+typedef uint64_t IOPMDriverAssertionType;
 #endif
 
 #ifndef IOPMDriverAssertionLevel
