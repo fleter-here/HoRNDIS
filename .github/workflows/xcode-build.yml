@@ -1,0 +1,86 @@
+name: Build HoRNDIS Kext
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build on macOS with xcodebuild
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Check available Xcode tools
+      run: |
+        echo "=== Xcode Information ==="
+        xcodebuild -version
+        echo ""
+        echo "=== Available SDKs ==="
+        xcodebuild -showsdks
+        echo ""
+        echo "=== Xcode directory ==="
+        ls -la /Applications/Xcode.app/Contents/Developer/
+
+    - name: Try xcodebuild with macosx SDK
+      run: |
+        echo "=== Attempting xcodebuild with macosx SDK ==="
+        echo "Building using xcodebuild command directly..."
+
+        # First, try to list the project targets
+        xcodebuild -project HoRNDIS.xcodeproj -list 2>&1 | head -50
+
+        echo ""
+        echo "=== Attempting direct build ==="
+        xcodebuild -project HoRNDIS.xcodeproj \
+                   -scheme HoRNDIS \
+                   -sdk macosx \
+                   -configuration Release \
+                   clean build 2>&1 | tail -100
+
+    - name: Check build results
+      if: always()
+      run: |
+        echo "=== Checking build artifacts ==="
+        find build -type f -name "*.kext" -o -name "*.dylib" -o -name "*.tbd" 2>/dev/null | head -20 || echo "No kext/dylib/tbd files found"
+        echo ""
+        echo "=== Checking project output ==="
+        ls -la build/ 2>/dev/null || echo "No build directory found"
+
+    - name: Upload build artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: HoRNDIS-Build
+        path: build/
+        retention-days: 7
+
+    - name: Build Summary
+      run: |
+        cat << EOF > build-summary.md
+        # HoRNDIS Build Attempt
+
+        **Build triggered:** \${{ github.event_name }}
+        **Branch:** \${{ github.ref_name }}
+        **Commit:** \${{ github.sha }}
+        **Build date:** $(date)
+
+        ## Results
+        Build attempted using xcodebuild with macosx SDK
+
+        ## Project Details
+        - Type: Legacy kernel extension (kext)
+        - Target: HoRNDIS
+        - SDK: macosx
+        - Configuration: Release
+
+        ## Notes
+        This is a legacy kext project that may require specific Xcode version and SDK settings.
+
+        For CI/CD, consider using a self-hosted runner with appropriate Xcode version.
+        EOF
