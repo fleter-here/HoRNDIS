@@ -47,47 +47,20 @@ jobs:
         echo ""
         find build -type f \( -name "*.kext" -o -name "*.dylib" -o -name "*.tbd" \) 2>/dev/null | head -10
 
-    - name: Upload build artifacts
+    - name: Presenting HoRNDIS.kext
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: HoRNDIS-Build
+        name: HoRNDIS.kext
         path: |
           build/Release/HoRNDIS.kext
-          build/Release/*.dSYM
         retention-days: 7
 
-    - name: Summary
-      run: |
-        cat << 'EOF' > build-summary.md
-        # HoRNDIS Build Summary
-
-        **Build triggered:** ${{ github.event_name }}
-        **Branch:** ${{ github.ref_name }}
-        **Commit:** ${{ github.sha }}
-        **Build date:** $(date)
-
-        ## Build Status
-
-        ## Project Type
-        - **Type**: Legacy kernel extension (kext)
-        - **Status**: ✅ **BUILT SUCCESSFULLY**
-
-        ## What Was Fixed
-        - Fixed typedef conflict: `IOPMDriverAssertionType` now correctly matches modern SDK
-
-        ## Still Has Issues
-        - **34+ deprecation warnings** for USB/Network KPIs
-        - **Carbon Resources build phase** still unsupported
-        - **Network KPIs** deprecated since macOS 10.15.4
-
-        ## Future Requirements
-        - [ ] Replace deprecated KPIs with DriverKit APIs
-        - [ ] Migrate from Carbon to modern resource management
-        - [ ] Update USB networking to use USBDriverKit
-
-        ## Build Notes
-        The build now succeeds on modern macOS because we updated the typedef to match
-        the modern SDK definition. However, this project still requires significant
-        refactoring to fully comply with Apple's current driver development standards.
-        EOF
+    - name: Presenting HoRNDIS.kext.dSYM
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: HoRNDIS.kext.dSYM
+        path: |
+          build/Release/HoRNDIS.kext.dSYM
+        retention-days: 7
